@@ -142,8 +142,18 @@ DELETE /api/courses/:id        # Delete course
 }
 ```
 
+
 ## 💻 Development
 
+### Prerequisites
+- Node.js (v14 or higher)
+- MongoDB
+- npm or yarn
+- Git
+
+### Environment Variables
+
+#### Backend (.env)
 
 ## 🚦 Testing
 
