@@ -55,6 +55,10 @@ const AdminCourseManagement = () => {
     };
 
     const removeSection = (index) => {
+        if (newCourse.sections.length === 1) {
+            setError('At least one section is required');
+            return;
+        }
         setNewCourse(prev => ({
             ...prev,
             sections: prev.sections.filter((_, i) => i !== index)
@@ -64,18 +68,31 @@ const AdminCourseManagement = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            // Filter out empty sections
-            const validSections = newCourse.sections.filter(section => section.trim() !== '');
+            // Filter out empty sections and validate
+            const validSections = newCourse.sections
+                .map(section => section.trim())
+                .filter(section => section !== '');
+
             if (validSections.length === 0) {
                 setError('At least one section is required');
                 return;
             }
 
-            await createCourse({
+            // Check for duplicate sections
+            const uniqueSections = new Set(validSections);
+            if (uniqueSections.size !== validSections.length) {
+                setError('Duplicate section numbers are not allowed');
+                return;
+            }
+
+            const courseData = {
                 ...newCourse,
+                courseCode: newCourse.courseCode.trim().toUpperCase(),
+                courseName: newCourse.courseName.trim(),
                 sections: validSections
-            });
-            
+            };
+
+            await createCourse(courseData);
             setSuccess('Course created successfully!');
             setError('');
             setNewCourse({
@@ -154,35 +171,36 @@ const AdminCourseManagement = () => {
                     </div>
                     <div className="mb-3">
                         <label className="form-label">Sections:</label>
+                        <div className="mb-2">
+                            <button
+                                type="button"
+                                className="btn btn-success"
+                                onClick={addNewSection}
+                            >
+                                <FaPlus className="me-2" />
+                                Add New Section
+                            </button>
+                        </div>
                         {newCourse.sections.map((section, index) => (
-                            <div key={index} className="d-flex mb-2">
+                            <div key={index} className="d-flex align-items-center mb-2">
                                 <input
                                     type="text"
                                     className="form-control me-2"
                                     value={section}
                                     onChange={(e) => handleSectionChange(index, e.target.value)}
-                                    placeholder="Section number"
+                                    placeholder="Section number (e.g., 001, 002)"
                                     required
                                 />
-                                {index > 0 && (
-                                    <button
-                                        type="button"
-                                        className="btn btn-danger"
-                                        onClick={() => removeSection(index)}
-                                    >
-                                        <FaTrash />
-                                    </button>
-                                )}
+                                <button
+                                    type="button"
+                                    className="btn btn-danger"
+                                    onClick={() => removeSection(index)}
+                                    title="Remove this section"
+                                >
+                                    <FaTrash />
+                                </button>
                             </div>
                         ))}
-                        <button
-                            type="button"
-                            className="btn btn-secondary mt-2"
-                            onClick={addNewSection}
-                        >
-                            <FaPlus className="me-2" />
-                            Add Section
-                        </button>
                     </div>
                     <div className="mb-3">
                         <label className="form-label">Semester:</label>
@@ -215,22 +233,27 @@ const AdminCourseManagement = () => {
                                 <strong>Semester:</strong> {course.semester}
                             </p>
                             <div className="mt-3">
-                                <h6>Sections:</h6>
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 className="mb-0">Sections:</h6>
+                                    <button
+                                        className="btn btn-success btn-sm"
+                                        onClick={() => handleAddSection(course._id)}
+                                        title="Add new section"
+                                    >
+                                        <FaPlus className="me-1" />
+                                        Add Section
+                                    </button>
+                                </div>
                                 <ul className="list-group">
                                     {course.sections.map((section, index) => (
-                                        <li key={index} className="list-group-item">
-                                            Section {section.sectionNumber} - 
-                                            {section.students.length} students enrolled
+                                        <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
+                                            <span>Section {section.sectionNumber}</span>
+                                            <span className="badge bg-primary rounded-pill">
+                                                {section.students.length} students
+                                            </span>
                                         </li>
                                     ))}
                                 </ul>
-                                <button
-                                    className="btn btn-outline-primary mt-2"
-                                    onClick={() => handleAddSection(course._id)}
-                                >
-                                    <FaPlus className="me-2" />
-                                    Add Section
-                                </button>
                             </div>
                         </div>
                     </div>

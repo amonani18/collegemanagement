@@ -4,11 +4,18 @@ export const createCourse = async (req, res) => {
     try {
         const { courseCode, courseName, sections, semester } = req.body;
         
+        if (!sections || !Array.isArray(sections)) {
+            return res.status(400).json({ message: 'Sections must be provided as an array' });
+        }
+
         // Check if course already exists
-        const existingCourse = await Course.findOne({ courseCode });
+        const existingCourse = await Course.findOne({ courseCode: courseCode.toUpperCase() });
         if (existingCourse) {
             // If course exists, add new sections
-            const newSections = sections.filter(newSection => 
+            const newSections = sections.map(section => ({
+                sectionNumber: section,
+                students: []
+            })).filter(newSection => 
                 !existingCourse.sections.some(existingSection => 
                     existingSection.sectionNumber === newSection.sectionNumber
                 )
@@ -24,15 +31,19 @@ export const createCourse = async (req, res) => {
 
         // Create new course with sections
         const course = new Course({
-            courseCode,
+            courseCode: courseCode.toUpperCase(),
             courseName,
-            sections: sections.map(section => ({ sectionNumber: section, students: [] })),
+            sections: sections.map(section => ({
+                sectionNumber: section,
+                students: []
+            })),
             semester
         });
 
         await course.save();
         res.status(201).json(course);
     } catch (error) {
+        console.error('Create course error:', error);
         res.status(400).json({ message: error.message });
     }
 };
