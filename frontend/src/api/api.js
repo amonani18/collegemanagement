@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create an Axios instance
 const API = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: 'https://college-management-tbyp.onrender.com/api',
     withCredentials: true, // Important for handling cookies (JWT auth)
 });
 
