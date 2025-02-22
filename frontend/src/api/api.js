@@ -4,7 +4,22 @@ import axios from 'axios';
 const API = axios.create({
     baseURL: 'https://college-management-tbyp.onrender.com/api',
     withCredentials: true, // Important for handling cookies (JWT auth)
+    headers: {
+        'Content-Type': 'application/json'
+    }
 });
+
+// Add an interceptor to handle 401 responses
+API.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            // Redirect to login page
+            window.location.href = '/student-login';
+        }
+        return Promise.reject(error);
+    }
+);
 
 // Authentication
 export const login = (credentials) => API.post('/students/login', credentials);

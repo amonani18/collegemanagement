@@ -16,10 +16,24 @@ app.use(cors({
         "https://college-management-client.onrender.com",
         "http://localhost:3000"
     ],
-    credentials: true 
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    exposedHeaders: ['Set-Cookie']
 }));
-app.use(express.json());
+
 app.use(cookieParser());
+app.use(express.json());
+
+app.use((req, res, next) => {
+    res.cookie('token', req.cookies.token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'None',
+        domain: '.onrender.com'
+    });
+    next();
+});
 
 app.use('/api/students', studentRoutes);
 app.use('/api/courses', courseRoutes);
