@@ -1,7 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import Student from '../models/Student.js';
 import Admin from '../models/Admin.js';
+import Student from '../models/Student.js';
 
 const router = express.Router();
 
@@ -10,7 +10,7 @@ export const protect = async (req, res, next) => {
         const token = req.cookies.token;
         
         if (!token) {
-            return res.status(401).json({ message: "Not authorized" });
+            return res.status(401).json({ message: "Not authorized, no token" });
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -32,7 +32,8 @@ export const protect = async (req, res, next) => {
         
         next();
     } catch (error) {
-        res.status(401).json({ message: "Not authorized" });
+        console.error('Auth Error:', error);
+        res.status(401).json({ message: "Not authorized, token failed" });
     }
 };
 
@@ -63,3 +64,4 @@ router.post('/api/auth/login', async (req, res) => {
 });
 
 export { router };
+

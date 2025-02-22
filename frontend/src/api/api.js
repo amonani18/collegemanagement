@@ -14,7 +14,10 @@ const API = axios.create({
 // Add request interceptor
 API.interceptors.request.use(
     (config) => {
-        // You can add any request preprocessing here
+        const token = document.cookie.split('token=')[1];
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
         return config;
     },
     (error) => {
@@ -27,8 +30,12 @@ API.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            // Redirect to login page on authentication error
-            window.location.href = '/student-login';
+            // Check if the current path includes 'admin'
+            if (window.location.pathname.includes('admin')) {
+                window.location.href = '/admin-login';
+            } else {
+                window.location.href = '/student-login';
+            }
         }
         return Promise.reject(error);
     }
