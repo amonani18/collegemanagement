@@ -1,0 +1,9 @@
+{
+  "name": "student-course-registration",
+  "version": "1.0.0",
+  "scripts": {
+    "install-client": "cd frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "start": "cd frontend && npm start"
+  }
+} 
