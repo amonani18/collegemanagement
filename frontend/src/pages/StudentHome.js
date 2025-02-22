@@ -46,10 +46,6 @@ const StudentHome = () => {
 
     return (
         <div className="dashboard-container">
-            <div className="dashboard-header">
-                <h2>Student Dashboard</h2>
-            </div>
-            
             <div className="dashboard-card">
                 <div className="row">
                     <div className="col-md-6">

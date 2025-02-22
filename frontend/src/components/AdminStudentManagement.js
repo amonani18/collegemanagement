@@ -132,10 +132,6 @@ const AdminStudentManagement = () => {
 
     return (
         <div className="dashboard-container">
-            <div className="dashboard-header">
-                <h2>Student Management</h2>
-            </div>
-
             {error && <div className="alert alert-danger">{error}</div>}
             {success && <div className="alert alert-success">{success}</div>}
 

@@ -9,7 +9,7 @@ const StudentCourseManagement = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [editingCourse, setEditingCourse] = useState(null);
-    const [selectedSection, setSelectedSection] = useState('');
+    const [newSection, setNewSection] = useState('');
     const [loading, setLoading] = useState(true);
     const [retryCount, setRetryCount] = useState(0);
 
@@ -23,12 +23,10 @@ const StudentCourseManagement = () => {
                 getEnrolledCourses()
             ]);
             
-            // Get enrolled course codes
-            const enrolledCourseCodes = enrolledResponse.data.map(course => course.courseCode);
-
-            // Filter available courses to exclude enrolled course codes
+            // Filter out enrolled courses from available courses
+            const enrolledIds = enrolledResponse.data.map(course => course._id);
             const availableCoursesList = availableResponse.data.filter(
-                course => !enrolledCourseCodes.includes(course.courseCode)
+                course => !enrolledIds.includes(course._id)
             );
             
             setAvailableCourses(availableCoursesList);
@@ -60,9 +58,9 @@ const StudentCourseManagement = () => {
         fetchCourses();
     };
 
-    const handleEnroll = async (courseId, sectionNumber) => {
+    const handleEnroll = async (courseId) => {
         try {
-            await enrollInCourse(courseId, { sectionNumber });
+            await enrollInCourse(courseId);
             setSuccess('Successfully enrolled in course!');
             setError('');
             fetchCourses();
@@ -88,11 +86,22 @@ const StudentCourseManagement = () => {
 
     const handleUpdateSection = async (courseId) => {
         try {
-            await updateCourseSection(courseId, { newSectionNumber: selectedSection });
+            // Validate if the new section exists
+            const course = availableCourses.find(c => c._id === courseId);
+            const sections = availableCourses
+                .filter(c => c.courseCode === course.courseCode)
+                .map(c => c.section);
+
+            if (!sections.includes(newSection)) {
+                setError(`Section ${newSection} does not exist for this course`);
+                return;
+            }
+
+            await updateCourseSection(courseId, newSection);
             setSuccess('Successfully updated course section!');
             setError('');
             setEditingCourse(null);
-            setSelectedSection('');
+            setNewSection('');
             fetchCourses();
         } catch (error) {
             setError(error.response?.data?.message || 'Failed to update course section');
@@ -115,10 +124,6 @@ const StudentCourseManagement = () => {
 
     return (
         <div className="dashboard-container">
-            <div className="dashboard-header">
-                <h2>Course Management</h2>
-            </div>
-
             {error && (
                 <div className="alert alert-danger">
                     {error}
@@ -144,23 +149,16 @@ const StudentCourseManagement = () => {
                                     <h5>{course.courseName}</h5>
                                     <p className="text-secondary">
                                         Course Code: {course.courseCode}<br />
+                                        Section: {course.section}<br />
                                         Semester: {course.semester}
                                     </p>
-                                    <div className="mt-3">
-                                        <h6>Available Sections:</h6>
-                                        {course.sections.map((section, index) => (
-                                            <div key={index} className="d-flex align-items-center mb-2">
-                                                <span className="me-2">Section {section.sectionNumber}</span>
-                                                <button
-                                                    className="btn btn-sm btn-primary"
-                                                    onClick={() => handleEnroll(course._id, section.sectionNumber)}
-                                                >
-                                                    <FaPlus className="me-1" />
-                                                    Enroll
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <button 
+                                        className="btn btn-custom btn-primary"
+                                        onClick={() => handleEnroll(course._id)}
+                                    >
+                                        <FaPlus className="me-2" />
+                                        Enroll
+                                    </button>
                                 </div>
                             ))
                         ) : (
@@ -173,77 +171,65 @@ const StudentCourseManagement = () => {
                     <div className="dashboard-card">
                         <h3 className="dashboard-title">My Enrolled Courses</h3>
                         {enrolledCourses.length > 0 ? (
-                            enrolledCourses.map((course) => {
-                                const enrolledSection = course.sections.find(section =>
-                                    section.students.includes(course.studentId)
-                                );
-
-                                return (
-                                    <div key={course._id} className="dashboard-card">
-                                        <h5>{course.courseName}</h5>
-                                        <p className="text-secondary">
-                                            Course Code: {course.courseCode}<br />
-                                            Current Section: {enrolledSection?.sectionNumber}<br />
-                                            Semester: {course.semester}
-                                        </p>
-                                        
-                                        {editingCourse === course._id ? (
-                                            <div className="mt-3">
-                                                <select
-                                                    className="form-select mb-2"
-                                                    value={selectedSection}
-                                                    onChange={(e) => setSelectedSection(e.target.value)}
-                                                >
-                                                    <option value="">Select Section</option>
-                                                    {course.sections.map((section, index) => (
-                                                        <option
-                                                            key={index}
-                                                            value={section.sectionNumber}
-                                                        >
-                                                            Section {section.sectionNumber}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <div className="btn-group">
-                                                    <button
-                                                        className="btn btn-primary"
-                                                        onClick={() => handleUpdateSection(course._id)}
-                                                        disabled={!selectedSection}
-                                                    >
-                                                        Save
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-secondary"
-                                                        onClick={() => {
-                                                            setEditingCourse(null);
-                                                            setSelectedSection('');
-                                                        }}
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="btn-group">
+                            enrolledCourses.map((course) => (
+                                <div key={course._id} className="dashboard-card">
+                                    <h5>{course.courseName}</h5>
+                                    <p className="text-secondary">
+                                        Course Code: {course.courseCode}<br />
+                                        Section: {course.section}<br />
+                                        Semester: {course.semester}
+                                    </p>
+                                    
+                                    {editingCourse === course._id ? (
+                                        <div className="mb-3">
+                                            <div className="input-group">
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    placeholder="New Section"
+                                                    value={newSection}
+                                                    onChange={(e) => setNewSection(e.target.value)}
+                                                />
                                                 <button
-                                                    className="btn btn-outline-primary"
-                                                    onClick={() => setEditingCourse(course._id)}
+                                                    className="btn btn-success"
+                                                    onClick={() => handleUpdateSection(course._id)}
                                                 >
-                                                    <FaEdit className="me-1" />
-                                                    Change Section
+                                                    Save
                                                 </button>
-                                                <button 
-                                                    className="btn btn-outline-danger ms-2"
-                                                    onClick={() => handleDrop(course._id)}
+                                                <button
+                                                    className="btn btn-secondary"
+                                                    onClick={() => {
+                                                        setEditingCourse(null);
+                                                        setNewSection('');
+                                                    }}
                                                 >
-                                                    <FaTrash className="me-1" />
-                                                    Drop Course
+                                                    Cancel
                                                 </button>
                                             </div>
-                                        )}
-                                    </div>
-                                );
-                            })
+                                        </div>
+                                    ) : (
+                                        <div className="btn-group">
+                                            <button 
+                                                className="btn btn-custom btn-info"
+                                                onClick={() => {
+                                                    setEditingCourse(course._id);
+                                                    setNewSection(course.section);
+                                                }}
+                                            >
+                                                <FaEdit className="me-2" />
+                                                Change Section
+                                            </button>
+                                            <button 
+                                                className="btn btn-custom btn-danger ms-2"
+                                                onClick={() => handleDrop(course._id)}
+                                            >
+                                                <FaTrash className="me-2" />
+                                                Drop Course
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))
                         ) : (
                             <p className="text-secondary">You haven't enrolled in any courses yet.</p>
                         )}

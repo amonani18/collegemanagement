@@ -2,55 +2,61 @@ import Course from '../models/Course.js';
 
 export const createCourse = async (req, res) => {
     try {
-        const { courseCode, courseName, sections, semester } = req.body;
+        const { courseCode, courseName, section, semester } = req.body;
+
+        // Convert courseCode to uppercase
+        const upperCourseCode = courseCode.toUpperCase();
+
+        // Check if course with same code and section exists
+        const existingCourseWithSection = await Course.findOne({ 
+            courseCode: upperCourseCode, 
+            section: section 
+        });
+
+        if (existingCourseWithSection) {
+            return res.status(400).json({ 
+                message: 'A course with this code and section already exists',
+                type: 'DUPLICATE_SECTION'
+            });
+        }
+
+        // Check if course code exists to get the course name
+        const existingCourse = await Course.findOne({ courseCode: upperCourseCode });
         
-        if (!sections || !Array.isArray(sections)) {
-            return res.status(400).json({ message: 'Sections must be provided as an array' });
-        }
+        // If course exists, use its name, otherwise use the provided name
+        const finalCourseName = existingCourse ? existingCourse.courseName : courseName;
 
-        // Check if course already exists
-        const existingCourse = await Course.findOne({ courseCode: courseCode.toUpperCase() });
-        if (existingCourse) {
-            // If course exists, add new sections
-            const newSections = sections.map(section => ({
-                sectionNumber: section,
-                students: []
-            })).filter(newSection => 
-                !existingCourse.sections.some(existingSection => 
-                    existingSection.sectionNumber === newSection.sectionNumber
-                )
-            );
-            
-            if (newSections.length > 0) {
-                existingCourse.sections.push(...newSections);
-                await existingCourse.save();
-                return res.status(200).json(existingCourse);
-            }
-            return res.status(400).json({ message: 'All sections already exist for this course' });
-        }
-
-        // Create new course with sections
         const course = new Course({
-            courseCode: courseCode.toUpperCase(),
-            courseName,
-            sections: sections.map(section => ({
-                sectionNumber: section,
-                students: []
-            })),
-            semester
+            courseCode: upperCourseCode,
+            courseName: finalCourseName,
+            section,
+            semester,
+            students: []
         });
 
         await course.save();
-        res.status(201).json(course);
+        
+        res.status(201).json({ 
+            message: 'Course created successfully', 
+            course,
+            isNewCourse: !existingCourse
+        });
     } catch (error) {
         console.error('Create course error:', error);
-        res.status(400).json({ message: error.message });
+        if (error.code === 11000) {
+            res.status(400).json({ 
+                message: 'A course with this code and section already exists',
+                type: 'DUPLICATE_SECTION'
+            });
+        } else {
+            res.status(500).json({ message: error.message });
+        }
     }
 };
 
 export const getAllCourses = async (req, res) => {
     try {
-        const courses = await Course.find().populate('sections.students', 'name email');
+        const courses = await Course.find().populate('students', 'studentNumber firstName lastName email program');
         res.json(courses);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -59,10 +65,7 @@ export const getAllCourses = async (req, res) => {
 
 export const getEnrolledCourses = async (req, res) => {
     try {
-        const studentId = req.user._id;
-        const courses = await Course.find({
-            'sections.students': studentId
-        }).populate('sections.students', 'name email');
+        const courses = await Course.find({ students: req.user._id });
         res.json(courses);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -108,7 +111,7 @@ export const deleteCourse = async (req, res) => {
 const isEnrolledInAnyCourseSection = async (courseCode, studentId) => {
     const courses = await Course.find({ 
         courseCode: courseCode.toUpperCase(),
-        sections: { $elemMatch: { students: studentId } }
+        students: studentId 
     });
     return courses.length > 0;
 };
@@ -116,7 +119,6 @@ const isEnrolledInAnyCourseSection = async (courseCode, studentId) => {
 export const enrollInCourse = async (req, res) => {
     try {
         const courseId = req.params.courseId;
-        const { sectionNumber } = req.body;
         const studentId = req.user._id;
 
         const course = await Course.findById(courseId);
@@ -124,116 +126,71 @@ export const enrollInCourse = async (req, res) => {
             return res.status(404).json({ message: 'Course not found' });
         }
 
-        // Check if student is already enrolled in any section
-        const isEnrolled = course.sections.some(section => 
-            section.students.includes(studentId)
-        );
-
+        // Check if student is already enrolled in any section of this course
+        const isEnrolled = await isEnrolledInAnyCourseSection(course.courseCode, studentId);
         if (isEnrolled) {
-            return res.status(400).json({ message: 'Already enrolled in this course' });
+            return res.status(400).json({ 
+                message: 'You are already enrolled in another section of this course'
+            });
         }
 
-        // Find the requested section
-        const section = course.sections.find(s => s.sectionNumber === sectionNumber);
-        if (!section) {
-            return res.status(404).json({ message: 'Section not found' });
+        // Check if student is already enrolled in this specific section
+        if (course.students.includes(studentId)) {
+            return res.status(400).json({ 
+                message: 'Already enrolled in this section'
+            });
         }
 
-        // Add student to section
-        section.students.push(studentId);
+        course.students.push(studentId);
         await course.save();
-
-        res.json(course);
+        res.json({ message: 'Successfully enrolled in course' });
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
 export const updateCourseSection = async (req, res) => {
     try {
-        const courseId = req.params.courseId;
-        const { newSectionNumber } = req.body;
+        const { courseId } = req.params;
+        const { section } = req.body;
         const studentId = req.user._id;
 
-        const course = await Course.findById(courseId);
-        if (!course) {
+        // Find the current course
+        const currentCourse = await Course.findById(courseId);
+        if (!currentCourse) {
             return res.status(404).json({ message: 'Course not found' });
         }
 
-        // Find current and new sections
-        const currentSection = course.sections.find(section => 
-            section.students.includes(studentId)
+        // Find the target section
+        const targetSection = await Course.findOne({
+            courseCode: currentCourse.courseCode,
+            section: section
+        });
+
+        if (!targetSection) {
+            return res.status(404).json({ message: 'Target section not found' });
+        }
+
+        // Check if student is already in the target section
+        if (targetSection.students.includes(studentId)) {
+            return res.status(400).json({ message: 'Already enrolled in this section' });
+        }
+
+        // Remove student from current section
+        currentCourse.students = currentCourse.students.filter(
+            student => student.toString() !== studentId.toString()
         );
-        const newSection = course.sections.find(section => 
-            section.sectionNumber === newSectionNumber
-        );
+        await currentCourse.save();
 
-        if (!currentSection) {
-            return res.status(404).json({ message: 'Not enrolled in this course' });
-        }
-        if (!newSection) {
-            return res.status(404).json({ message: 'New section not found' });
-        }
+        // Add student to new section
+        targetSection.students.push(studentId);
+        await targetSection.save();
 
-        // Remove student from current section and add to new section
-        currentSection.students = currentSection.students.filter(id => !id.equals(studentId));
-        newSection.students.push(studentId);
-        
-        await course.save();
-        res.json(course);
+        res.json({ 
+            message: 'Course section updated successfully',
+            newSection: targetSection.section
+        });
     } catch (error) {
-        res.status(400).json({ message: error.message });
-    }
-};
-
-export const dropCourse = async (req, res) => {
-    try {
-        const courseId = req.params.courseId;
-        const studentId = req.user._id;
-
-        const course = await Course.findById(courseId);
-        if (!course) {
-            return res.status(404).json({ message: 'Course not found' });
-        }
-
-        // Find and remove student from their section
-        const section = course.sections.find(section => 
-            section.students.includes(studentId)
-        );
-
-        if (!section) {
-            return res.status(404).json({ message: 'Not enrolled in this course' });
-        }
-
-        section.students = section.students.filter(id => !id.equals(studentId));
-        await course.save();
-
-        res.json({ message: 'Successfully dropped course' });
-    } catch (error) {
-        res.status(400).json({ message: error.message });
-    }
-};
-
-export const addSection = async (req, res) => {
-    try {
-        const courseId = req.params.courseId;
-        const { sectionNumber } = req.body;
-
-        const course = await Course.findById(courseId);
-        if (!course) {
-            return res.status(404).json({ message: 'Course not found' });
-        }
-
-        // Check if section already exists
-        if (course.sections.some(s => s.sectionNumber === sectionNumber)) {
-            return res.status(400).json({ message: 'Section already exists' });
-        }
-
-        course.sections.push({ sectionNumber, students: [] });
-        await course.save();
-
-        res.json(course);
-    } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(500).json({ message: error.message });
     }
 };

@@ -28,9 +28,6 @@ const StudentDashboard = () => {
 
     return (
         <div className="dashboard-container">
-            <div className="dashboard-header">
-                <h2>Available Courses</h2>
-            </div>
             <div className="dashboard-card">
                 {courses.map((course) => (
                     <div key={course._id} className="card-custom mb-3">

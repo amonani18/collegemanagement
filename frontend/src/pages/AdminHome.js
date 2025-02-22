@@ -18,11 +18,6 @@ const AdminHome = () => {
 
     return (
         <div className="dashboard-container">
-            <div className="dashboard-header">
-                <h2>Admin Dashboard</h2>
-                <p className="text-secondary mb-0">Welcome to the administration panel</p>
-            </div>
-            
             <ul className="menu-list">
                 <li className="menu-item">
                     <Link to="/admin/students" className="menu-link">
