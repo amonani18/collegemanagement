@@ -5,28 +5,31 @@ const CourseSchema = new mongoose.Schema({
         type: String, 
         required: true,
         trim: true,
-        uppercase: true
+        uppercase: true,
+        unique: true
     },
     courseName: { 
         type: String, 
         required: true,
         trim: true
     },
-    section: { 
-        type: String, 
-        required: true,
-        trim: true
-    },
+    sections: [{
+        sectionNumber: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        students: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Student'
+        }]
+    }],
     semester: { 
         type: String, 
         required: true,
         enum: ['Fall', 'Winter', 'Summer'],
         trim: true
-    },
-    students: [{ 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Student' 
-    }]
+    }
 }, {
     timestamps: true
 });
