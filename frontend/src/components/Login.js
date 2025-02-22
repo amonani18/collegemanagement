@@ -10,6 +10,7 @@ const Login = () => {
         password: ''
     });
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -22,11 +23,17 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setLoading(true);
+        
         try {
-            await login(formData);
-            navigate('/student-home');
+            const response = await login(formData);
+            if (response.data) {
+                navigate('/student-home');
+            }
         } catch (error) {
-            setError(error.response?.data?.message || 'Login failed');
+            setError(error.response?.data?.message || 'Login failed. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -72,8 +79,12 @@ const Login = () => {
                         </div>
                     </div>
 
-                    <button type="submit" className="auth-button">
-                        Login
+                    <button 
+                        type="submit" 
+                        className="auth-button" 
+                        disabled={loading}
+                    >
+                        {loading ? 'Logging in...' : 'Login'}
                     </button>
                 </form>
 

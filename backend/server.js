@@ -11,19 +11,16 @@ dotenv.config();
 const app = express();
 connectDB();
 
-app.use(cors({ 
-    origin: [
-        "https://college-management-client.onrender.com",
-        "http://localhost:3000"
-    ],
+// CORS Configuration
+app.use(cors({
+    origin: ['http://localhost:3000', 'https://college-management-client.onrender.com'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-    exposedHeaders: ['Set-Cookie']
+    allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-app.use(cookieParser());
 app.use(express.json());
+app.use(cookieParser());
 
 app.use((req, res, next) => {
     res.cookie('token', req.cookies.token, {
@@ -35,8 +32,10 @@ app.use((req, res, next) => {
     next();
 });
 
+// Routes
 app.use('/api/students', studentRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/admin', adminRoutes);
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
