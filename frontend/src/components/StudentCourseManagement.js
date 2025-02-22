@@ -64,6 +64,17 @@ const StudentCourseManagement = () => {
 
     const handleUpdateSection = async (courseId) => {
         try {
+            // Validate if the new section exists
+            const course = availableCourses.find(c => c._id === courseId);
+            const sections = availableCourses
+                .filter(c => c.courseCode === course.courseCode)
+                .map(c => c.section);
+
+            if (!sections.includes(newSection)) {
+                setError(`Section ${newSection} does not exist for this course`);
+                return;
+            }
+
             await updateCourseSection(courseId, newSection);
             setSuccess('Successfully updated course section!');
             setError('');
