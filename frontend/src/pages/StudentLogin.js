@@ -14,7 +14,7 @@ const StudentLogin = () => {
 
     const checkAuth = async () => {
         try {
-            const response = await axios.get('http://localhost:5000/api/students/me', { withCredentials: true });
+            const response = await axios.get('https://college-management-tbyp.onrender.com/api/students/me', { withCredentials: true });
             if (response.data) {
                 navigate('/student-home'); // Redirect if already logged in
             }
@@ -28,7 +28,7 @@ const StudentLogin = () => {
         
         try {
             const response = await axios.post(
-                'http://localhost:5000/api/students/login',
+                'https://college-management-tbyp.onrender.com/api/students/login',
                 { email, password },
                 { withCredentials: true } // Sends cookies
             );

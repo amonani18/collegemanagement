@@ -10,7 +10,7 @@ const StudentHome = () => {
     useEffect(() => {
         const fetchStudentData = async () => {
             try {
-                const response = await axios.get('http://localhost:5000/api/students/me', { withCredentials: true });
+                const response = await axios.get('https://college-management-tbyp.onrender.com/api/students/me', { withCredentials: true });
                 setStudent(response.data);
             } catch (error) {
                 console.log("Not authenticated");
