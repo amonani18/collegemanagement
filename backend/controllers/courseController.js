@@ -4,22 +4,32 @@ export const createCourse = async (req, res) => {
     try {
         const { courseCode, courseName, section, semester } = req.body;
 
-        // Check if course already exists
-        const existingCourse = await Course.findOne({ courseCode });
+        // Check if course with same code and section exists
+        const existingCourse = await Course.findOne({ courseCode, section });
         if (existingCourse) {
-            return res.status(400).json({ message: 'Course already exists' });
+            return res.status(400).json({ 
+                message: 'A course with this code and section already exists',
+                type: 'DUPLICATE_SECTION'
+            });
         }
+
+        // Check if course code exists to get the course name
+        const existingCourseCode = await Course.findOne({ courseCode });
+        const finalCourseName = existingCourseCode ? existingCourseCode.courseName : courseName;
 
         const course = new Course({
             courseCode,
-            courseName,
+            courseName: finalCourseName,
             section,
             semester,
             students: []
         });
 
         await course.save();
-        res.status(201).json({ message: 'Course created successfully', course });
+        res.status(201).json({ 
+            message: 'Course created successfully', 
+            course 
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

@@ -3,8 +3,7 @@ import mongoose from 'mongoose';
 const CourseSchema = new mongoose.Schema({
     courseCode: { 
         type: String, 
-        required: true, 
-        unique: true,
+        required: true,
         trim: true,
         uppercase: true
     },
@@ -31,5 +30,8 @@ const CourseSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+// Compound unique index for courseCode and section
+CourseSchema.index({ courseCode: 1, section: 1 }, { unique: true });
 
 export default mongoose.model('Course', CourseSchema);

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createCourse } from '../api/api';
+import { createCourse, getAllCourses } from '../api/api';
 
 const CreateCourse = () => {
     const [courseData, setCourseData] = useState({
@@ -9,16 +9,44 @@ const CreateCourse = () => {
         section: '',
         semester: 'Fall'
     });
+    const [existingCourses, setExistingCourses] = useState([]);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
+    useEffect(() => {
+        fetchExistingCourses();
+    }, []);
+
+    const fetchExistingCourses = async () => {
+        try {
+            const response = await getAllCourses();
+            setExistingCourses(response.data);
+        } catch (error) {
+            console.error('Error fetching courses:', error);
+        }
+    };
+
     const handleChange = (e) => {
-        setCourseData({
-            ...courseData,
-            [e.target.name]: e.target.value
-        });
+        const { name, value } = e.target;
+        setCourseData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+
+        // If courseCode changes, find and auto-fill courseName
+        if (name === 'courseCode') {
+            const existingCourse = existingCourses.find(
+                course => course.courseCode.toLowerCase() === value.toLowerCase()
+            );
+            if (existingCourse) {
+                setCourseData(prev => ({
+                    ...prev,
+                    courseName: existingCourse.courseName
+                }));
+            }
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -36,6 +64,7 @@ const CreateCourse = () => {
                 section: '',
                 semester: 'Fall'
             });
+            fetchExistingCourses(); // Refresh the courses list
             setTimeout(() => {
                 navigate('/admin/course-management');
             }, 2000);
@@ -53,6 +82,15 @@ const CreateCourse = () => {
             setLoading(false);
         }
     };
+
+    // Group courses by courseCode
+    const coursesByCode = existingCourses.reduce((acc, course) => {
+        if (!acc[course.courseCode]) {
+            acc[course.courseCode] = [];
+        }
+        acc[course.courseCode].push(course);
+        return acc;
+    }, {});
 
     return (
         <div className="container mt-5">
@@ -75,6 +113,15 @@ const CreateCourse = () => {
                                 onChange={handleChange}
                                 required
                             />
+                            {courseData.courseCode && coursesByCode[courseData.courseCode.toUpperCase()] && (
+                                <small className="text-info">
+                                    Existing sections for this course: {
+                                        coursesByCode[courseData.courseCode.toUpperCase()]
+                                            .map(course => course.section)
+                                            .join(', ')
+                                    }
+                                </small>
+                            )}
                         </div>
                         <div className="mb-3">
                             <label className="form-label">Course Name</label>
@@ -120,6 +167,34 @@ const CreateCourse = () => {
                             {loading ? 'Creating...' : 'Create Course'}
                         </button>
                     </form>
+
+                    {Object.keys(coursesByCode).length > 0 && (
+                        <div className="mt-4">
+                            <h4>Existing Courses and Sections</h4>
+                            <div className="table-responsive">
+                                <table className="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Course Code</th>
+                                            <th>Course Name</th>
+                                            <th>Sections</th>
+                                            <th>Semester</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Object.entries(coursesByCode).map(([code, courses]) => (
+                                            <tr key={code}>
+                                                <td>{code}</td>
+                                                <td>{courses[0].courseName}</td>
+                                                <td>{courses.map(c => c.section).join(', ')}</td>
+                                                <td>{courses[0].semester}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
