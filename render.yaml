@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: college-management-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/build
+    envVars:
+      - key: NODE_VERSION
+        value: 16.20.2
+      - key: NODE_ENV
+        value: production 
