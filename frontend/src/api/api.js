@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Create an Axios instance
+// Create an Axios instance with base configuration
 const API = axios.create({
     baseURL: process.env.NODE_ENV === 'production' 
         ? 'https://college-management-tbyp.onrender.com/api'
@@ -8,7 +8,8 @@ const API = axios.create({
     withCredentials: true, // Important for handling cookies (JWT auth)
     headers: {
         'Content-Type': 'application/json'
-    }
+    },
+    timeout: 10000, // 10 second timeout
 });
 
 // Add request interceptor
@@ -21,6 +22,7 @@ API.interceptors.request.use(
         return config;
     },
     (error) => {
+        console.error('Request Error:', error);
         return Promise.reject(error);
     }
 );
@@ -28,7 +30,18 @@ API.interceptors.request.use(
 // Add response interceptor
 API.interceptors.response.use(
     (response) => response,
-    (error) => {
+    async (error) => {
+        if (error.message === 'Network Error') {
+            console.error('Network Error - Unable to connect to the server');
+            return Promise.reject({
+                response: {
+                    data: {
+                        message: 'Unable to connect to the server. Please check your internet connection or try again later.'
+                    }
+                }
+            });
+        }
+
         if (error.response?.status === 401) {
             // Check if the current path includes 'admin'
             if (window.location.pathname.includes('admin')) {

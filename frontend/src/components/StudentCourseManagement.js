@@ -10,9 +10,14 @@ const StudentCourseManagement = () => {
     const [success, setSuccess] = useState('');
     const [editingCourse, setEditingCourse] = useState(null);
     const [newSection, setNewSection] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [retryCount, setRetryCount] = useState(0);
 
     const fetchCourses = async () => {
         try {
+            setLoading(true);
+            setError('');
+            
             const [availableResponse, enrolledResponse] = await Promise.all([
                 getAllCourses(),
                 getEnrolledCourses()
@@ -27,14 +32,31 @@ const StudentCourseManagement = () => {
             setAvailableCourses(availableCoursesList);
             setEnrolledCourses(enrolledResponse.data);
             setError('');
+            setRetryCount(0); // Reset retry count on successful fetch
         } catch (error) {
-            setError('Failed to fetch courses: ' + (error.response?.data?.message || error.message));
+            console.error('Fetch courses error:', error);
+            setError(error.response?.data?.message || 'Failed to fetch courses. Please try again.');
+            
+            // Implement retry logic
+            if (retryCount < 3) {
+                setTimeout(() => {
+                    setRetryCount(prev => prev + 1);
+                    fetchCourses();
+                }, 2000); // Retry after 2 seconds
+            }
+        } finally {
+            setLoading(false);
         }
     };
 
     useEffect(() => {
         fetchCourses();
     }, []);
+
+    const handleRetry = () => {
+        setRetryCount(0);
+        fetchCourses();
+    };
 
     const handleEnroll = async (courseId) => {
         try {
@@ -87,13 +109,38 @@ const StudentCourseManagement = () => {
         }
     };
 
+    if (loading) {
+        return (
+            <div className="dashboard-container">
+                <div className="text-center p-5">
+                    <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                    </div>
+                    <p className="mt-3">Loading courses...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="dashboard-container">
             <div className="dashboard-header">
                 <h2>Course Management</h2>
             </div>
 
-            {error && <div className="alert alert-danger">{error}</div>}
+            {error && (
+                <div className="alert alert-danger">
+                    {error}
+                    {retryCount >= 3 && (
+                        <button 
+                            className="btn btn-link text-danger"
+                            onClick={handleRetry}
+                        >
+                            Click here to try again
+                        </button>
+                    )}
+                </div>
+            )}
             {success && <div className="alert alert-success">{success}</div>}
             
             <div className="row">
