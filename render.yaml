@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: student-course-registration
+    env: static
+    buildCommand: npm run install-client && npm run build
+    staticPublishPath: ./frontend/build
+    envVars:
+      - key: NODE_VERSION
+        value: 16.20.0 
